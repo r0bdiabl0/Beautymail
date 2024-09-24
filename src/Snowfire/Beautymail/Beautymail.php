@@ -2,15 +2,16 @@
 
 namespace Snowfire\Beautymail;
 
-use Illuminate\Contracts\Mail\Mailer;
+use Illuminate\Contracts\Mail\Mailer as MailerContract;
 use Illuminate\Mail\PendingMail;
+use Illuminate\Support\Facades\Request;
 
-class Beautymail implements Mailer
+abstract class Beautymail implements MailerContract
 {
     /**
      * Contains settings for emails processed by Beautymail.
      *
-     * @var
+     * @var array
      */
     private $settings;
 
@@ -24,40 +25,52 @@ class Beautymail implements Mailer
     /**
      * Initialise the settings and mailer.
      *
-     * @param $settings
+     * @param array $settings
+     * @param \Illuminate\Contracts\Mail\Mailer $mailer
      */
-    public function __construct($settings)
+    public function __construct(array $settings, MailerContract $mailer)
     {
         $this->settings = $settings;
-        $this->mailer = app()->make('Illuminate\Contracts\Mail\Mailer');
+        $this->mailer = $mailer;
         $this->setLogoPath();
     }
 
+    /**
+     * Send a new message immediately using a view.
+     *
+     * @param string|array $view
+     * @param array $data
+     * @param \Closure|string|null $callback
+     *
+     * @return void
+     */
+    abstract public function sendNow($view, array $data = [], $callback = null);
+
     public function to($users)
     {
-        return (new PendingMail($this))->to($users);
+        return (new PendingMail($this->mailer))->to($users);
     }
 
     public function bcc($users)
     {
-        return (new PendingMail($this))->bcc($users);
+        return (new PendingMail($this->mailer))->bcc($users);
     }
-    
+
     public function cc($users)
     {
-        return (new PendingMail($this))->cc($users);
+        return (new PendingMail($this->mailer))->cc($users);
     }
 
     /**
      * Retrieve the settings.
      *
-     * @return mixed
+     * @return array
      */
     public function getData()
     {
         return $this->settings;
     }
-    
+
     /**
      * @return \Illuminate\Contracts\Mail\Mailer
      */
@@ -69,9 +82,9 @@ class Beautymail implements Mailer
     /**
      * Send a new message using a view.
      *
-     * @param string|array    $view
-     * @param array           $data
-     * @param \Closure|string $callback
+     * @param string|array $view
+     * @param array $data
+     * @param \Closure|string|null $callback
      *
      * @return void
      */
@@ -83,23 +96,7 @@ class Beautymail implements Mailer
     }
 
     /**
-     * Send a new message using the a view via queue.
-     *
-     * @param string|array    $view
-     * @param array           $data
-     * @param \Closure|string $callback
-     *
-     * @return void
-     */
-    public function queue($view, array $data, $callback)
-    {
-        $data = array_merge($this->settings, $data);
-
-        $this->mailer->queue($view, $data, $callback);
-    }
-
-    /**
-     * @param $view
+     * @param string|array $view
      * @param array $data
      *
      * @return \Illuminate\View\View
@@ -115,7 +112,7 @@ class Beautymail implements Mailer
      * Send a new message when only a raw text part.
      *
      * @param string $text
-     * @param mixed  $callback
+     * @param mixed $callback
      *
      * @return void
      */
@@ -125,23 +122,13 @@ class Beautymail implements Mailer
     }
 
     /**
-     * Get the array of failed recipients.
-     *
-     * @return array
-     */
-    public function failures()
-    {
-        return $this->mailer->failures();
-    }
-
-    /**
-     * @return mixed
+     * @return void
      */
     private function setLogoPath()
     {
         $this->settings['logo']['path'] = str_replace(
             '%PUBLIC%',
-            \Request::getSchemeAndHttpHost(),
+            Request::getSchemeAndHttpHost(),
             $this->settings['logo']['path']
         );
     }
