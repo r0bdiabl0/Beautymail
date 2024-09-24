@@ -6,7 +6,7 @@ use Illuminate\Contracts\Mail\Mailer as MailerContract;
 use Illuminate\Mail\PendingMail;
 use Illuminate\Support\Facades\Request;
 
-abstract class Beautymail implements MailerContract
+class Beautymail implements MailerContract
 {
     /**
      * Contains settings for emails processed by Beautymail.
@@ -44,7 +44,12 @@ abstract class Beautymail implements MailerContract
      *
      * @return void
      */
-    abstract public function sendNow($view, array $data = [], $callback = null);
+    public function sendNow($view, array $data = [], $callback = null)
+    {
+        $data = array_merge($this->settings, $data);
+
+        $this->mailer->sendNow($view, $data, $callback);
+    }
 
     public function to($users)
     {
@@ -119,6 +124,18 @@ abstract class Beautymail implements MailerContract
     public function raw($text, $callback)
     {
         return $this->mailer->send(['raw' => $text], [], $callback);
+    }
+
+    /**
+     * Get the array of failed recipients.
+     *
+     * @return array
+     */
+    public function failures()
+    {
+        // The failures method is no longer part of the Mailer contract.
+        // You can implement your own logic here if needed.
+        return [];
     }
 
     /**
